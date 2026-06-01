@@ -1,0 +1,782 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
+
+import { useEffect, useState } from "react";
+import { Download, Users, NotebookPen, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import Navbar from "@/components/navbar";
+import Sidebar from "@/components/sidebar";
+import { RefreshCw } from "lucide-react";
+import SystemInitializingOverlay from "@/components/loading";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import CustomTable from "@/components/custom-table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "react-toastify";
+
+export default function Applications() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [applications, setApplications] = useState<any[]>([]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmRestoreOpen, setConfirmRestoreOpen] = useState(false);
+  const [pendingApp, setPendingApp] = useState<{
+    id: string;
+    url: string;
+  } | null>(null);
+  const [restoreAppId, setRestoreAppId] = useState<string | undefined>();
+  const [confirmDelOpen, setConfirmDelOpen] = useState(false);
+  const [pendingDelApp, setPendingDelApp] = useState<string>('')
+
+  // ------------------------
+  // State for Filters
+  // ------------------------
+  const [filterCompany, setFilterCompany] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterDate, setFilterDate] = useState("");
+
+  // Filtered applications
+  const filteredApplications = applications.filter((app) => {
+    const matchCompany = filterCompany
+      ? app.company?.toLowerCase().includes(filterCompany.toLowerCase())
+      : true;
+    const matchStatus = filterStatus ? app.status === filterStatus : true;
+    const matchDate = filterDate
+      ? new Date(app.date_applied)?.toISOString().slice(0, 10) === filterDate
+      : true;
+
+    return matchCompany && matchStatus && matchDate;
+  });
+
+  // ------------------------
+  // Table Columns
+  // ------------------------
+  const columns = [
+    {
+      header: "NO",
+      accessorKey: "no",
+      cell: (_row: any, index: number) => (
+        <div className="text-center">{index + 1}</div>
+      ),
+    },
+    {
+      header: "Job URL",
+      accessorKey: "job_url",
+      cell: (row: any) => (
+        <div className="max-w-60 truncate text-center" title={row.job_url}>
+          <a href={row.job_url} target="_blank" rel="noopener noreferrer">
+            {row.job_url}
+          </a>
+        </div>
+      ),
+    },
+    {
+      header: "Status",
+      accessorKey: "status",
+      cell: (row: any) => {
+        let color = "bg-gray-500"; // fallback color
+
+        switch (row.status) {
+          case "Pending":
+            color = "bg-yellow-500"; // yellow for pending
+            break;
+          case "Generating":
+            color = "bg-orange-500";
+            break;
+          case "Generated":
+            color = "bg-purple-500"; // purple for generated
+            break;
+          case "Downloaded":
+            color = "bg-blue-500"; // blue for downloaded
+            break;
+          case "Applied":
+            color = "bg-green-500"; // green for applied
+            break;
+          default:
+            color = "bg-gray-500"; // unknown status
+        }
+
+        return (
+          <div className="text-center">
+            <Badge className={`${color} text-white`}>{row.status}</Badge>
+          </div>
+        );
+      },
+    },
+    {
+      header: "Resume",
+      accessorKey: "resumeWordPath",
+      cell: (row: any) => {
+        if (!row.resumeWordPath)
+          return (
+            <div className="flex justify-center">
+              <span className="text-gray-400">N/A</span>
+            </div>
+          );
+
+        // Build full URL to backend
+        const fileWordUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}${row.resumeWordPath}`;
+        const filePDFUrl = row.resumePDFPath
+          ? `${process.env.NEXT_PUBLIC_BACKEND_URL}${row.resumePDFPath}`
+          : null;
+
+        return (
+          <div className="flex justify-center">
+            {row.status !== "Pending" && (
+              <>
+                <a
+                  href={fileWordUrl}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Download className="" />
+                </a>
+                {filePDFUrl && (
+                  <a
+                    href={filePDFUrl}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <NotebookPen className="" />
+                  </a>
+                )}
+              </>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      header: "Action",
+      accessorKey: "action",
+      cell: (row: any) => {
+        const filePDFUrl = row.resumePDFPath
+          ? `${process.env.NEXT_PUBLIC_BACKEND_URL}${row.resumePDFPath}`
+          : "";
+        const profileName = row.profile?.fullName
+        return (
+          <div
+            className={`${
+              row.status === "Generated" ? "justify-center" : "justify-end"
+            } flex items-center h-full gap-2`}
+          >
+            {(() => {
+              switch (row.status) {
+                case "Pending":
+                  return (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="bg-yellow-700"
+                      disabled
+                    >
+                      Queued
+                    </Button>
+                  );
+                case "Generating":
+                  return (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="bg-orange-700"
+                      disabled
+                    >
+                      Generating
+                    </Button>
+                  );
+                case "Generated":
+                  return (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="bg-green-200 text-black cursor-pointer"
+                      onClick={() =>
+                        handleOnApply(row._id, row.job_url, filePDFUrl, profileName)
+                      }
+                    >
+                      Apply
+                    </Button>
+                  );
+                case "Downloaded":
+                  return (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="bg-green-200 text-black cursor-pointer"
+                      onClick={() =>
+                        handleOnApply(row._id, row.job_url, filePDFUrl, profileName)
+                      }
+                    >
+                      Apply
+                    </Button>
+                  );
+
+                case "Applied":
+                  return (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="cursor-pointer"
+                      onClick={() => handleRestore(row._id)}
+                    >
+                      Restore
+                    </Button>
+                  );                  
+
+                default:
+                  return (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="bg-yellow-800"
+                      disabled
+                    >
+                      Pending
+                    </Button>
+                  );
+              }
+            })()}
+
+            <Trash2
+              onClick={() => handleOnDelete(row._id)}
+              className="cursor-pointer text-gray-400 hover:text-blue-900 transition-colors duration-200 active:scale-95"
+            />
+          </div>
+        )
+      },
+    },
+    {
+      header: "Date",
+      accessorKey: "date_applied",
+      cell: (row: any) => {
+        const raw = row.date_applied;
+        const date = new Date(raw);
+
+        const formatted = date.toLocaleString("en-CA", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }).replace(",", "");
+
+        return (
+          <div className="max-w-48 truncate" title={formatted}>
+            {formatted}
+          </div>
+        );
+      },
+    },
+    {
+      header: "Company",
+      accessorKey: "company",
+      cell: (row: any) => (
+        <div className="max-w-48 truncate" title={row.company}>
+          {row.company}
+        </div>
+      ),
+    },
+    { header: "Job Title", accessorKey: "job_title" },
+    {
+      header: "Drive PDF Link",
+      accessorKey: "drivePdfLink",
+      cell: (row: any) => {
+        if (!row.drivePdfLink) {
+          return (
+            <div className="flex justify-center">
+              <span className="text-gray-400">N/A</span>
+            </div>
+          );
+        }
+        return (
+          <div className="max-w-60 truncate text-center" title={row.drivePdfLink}>
+            <a href={row.drivePdfLink} target="_blank" rel="noopener noreferrer">
+              Download PDF
+            </a>
+          </div>
+        );
+      },
+    },
+    {
+      header: "Drive Word Link",
+      accessorKey: "driveDocxLink",
+      cell: (row: any) => {
+        if (!row.driveDocxLink) {
+          return (
+            <div className="flex justify-center">
+              <span className="text-gray-400">N/A</span>
+            </div>
+          );
+        }
+        return (
+          <div className="max-w-60 truncate text-center" title={row.driveDocxLink}>
+            <a href={row.driveDocxLink} target="_blank" rel="noopener noreferrer">
+              Download Word
+            </a>
+          </div>
+        );
+      },
+    },
+    {
+      header: "Profile",
+      accessorKey: "profile",
+      cell: (row: any) => (
+        <div className="text-center">{row.profile?.fullName}</div>
+      ),
+    },
+    {
+      header: "Description",
+      accessorKey: "description",
+      cell: (row: any) => {
+        const description = row.description;
+
+        const handleCopy = () => {
+          navigator.clipboard.writeText(description);
+        };
+
+        return (
+          <div
+            className="max-w-xs truncate cursor-pointer hover:underline"
+            title={description}
+            onClick={handleCopy}
+          >
+            {description}
+          </div>
+        );
+      }
+    },
+  ];
+
+  // ------------------------
+  // Lifecycle
+  // ------------------------
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    getApplications();
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      getApplications();
+    }, 5000); // every 10s
+    return () => clearInterval(interval);
+  }, []);
+
+  // ------------------------
+  // API Calls
+  // ------------------------
+  const getApplications = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/applications`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        }
+      );
+
+      const data = await res.json();
+      if (data.success) {
+        setApplications(data.data);
+      } else {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error(
+        "An unexpected error occurred while getting applications:",
+        error
+      );
+    } finally {
+    }
+  };
+
+  const handleRestore = async (appId: string) => {
+    try {
+      setRestoreAppId(appId);
+      setConfirmRestoreOpen(true);
+    } catch (error) {
+      console.error("Restore action failed:", error);
+    }
+  }
+
+  const handleGenerate = async (appId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/applications/${appId}/generate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to generate resume.");
+      }
+
+      toast.success("Resume generated.");
+      await getApplications();
+    } catch (error: any) {
+      toast.error(error.message || "Generate failed.");
+    }
+  };
+
+  const handleDownload = async (appId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/applications/${appId}/download`,
+        {
+          method: "GET",
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to download generated resume.");
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `resume_${appId}.docx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+
+      toast.success("Resume downloaded.");
+      await getApplications();
+    } catch (error: any) {
+      toast.error(error.message || "Download failed.");
+    }
+  };
+
+  const exportToCSV = () => {
+    try {
+      // Define CSV headers
+      const headers = [
+        'Job Link',
+        'Drive PDF Link',
+        'Status'
+      ];
+
+      // Map applications data to CSV rows
+      const rows = filteredApplications.map((app) => [
+        `"${app.job_url || ''}"`,
+        `"${app.drivePdfLink || ''}"`,
+        `"${app.status || ''}"`,
+      ]);
+
+      // Combine headers and rows
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `applications_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('CSV export failed:', error);
+      alert('Failed to export CSV');
+    }
+  }
+
+  const handleOnApply = async (appId: string, jobUrl: string, filePDFUrl: string, profileName: string) => {
+    try {
+      if (jobUrl) {
+        window.open(jobUrl, "_blank", "noopener,noreferrer");
+      }
+
+      if (filePDFUrl && !filePDFUrl.endsWith("undefined")) {
+        const response = await fetch(filePDFUrl, { mode: "cors" });
+        if (!response.ok) {
+          throw new Error("Failed to download PDF from server.");
+        }
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = `${profileName}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+      }
+
+      setPendingApp({ id: appId, url: jobUrl });
+      setConfirmOpen(true);
+    } catch (error) {
+      console.error("Apply action failed:", error);
+    }
+  };
+
+  const handleOnDelete = (appId: string) => {
+    setPendingDelApp(appId);
+    setConfirmDelOpen(true);
+  }
+
+  const confirmDelete = async () => {
+    if (pendingDelApp === '') return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/applications/${pendingDelApp}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        }
+      );
+
+      if (res.ok) {
+        getApplications(); // refresh
+      }
+    } catch (err) {
+      console.error("Delete Application Error:", err);
+    } finally {
+      setConfirmDelOpen(false);
+      setPendingDelApp('');
+    }
+  }
+
+
+  const confirmApply = async () => {
+    if (!pendingApp) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/applications/${pendingApp.id}/applied`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        }
+      );
+
+      if (res.ok) {
+        getApplications(); // refresh
+      } else {
+        const data = await res.json();
+        toast.error(data.message || "Failed to set applied status.");
+      }
+    } catch (err) {
+      console.error("Set applied error:", err);
+      toast.error("Set applied failed.");
+    } finally {
+      setConfirmOpen(false);
+      setPendingApp(null);
+    }
+  };
+
+  const confirmRestore = async () => {
+    if (!restoreAppId) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/applications/${restoreAppId}/restored`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        }
+      );
+
+      if (res.ok) {
+        getApplications(); // refresh
+      }
+    } catch (err) {
+      console.error("Set applied error:", err);
+    } finally {
+      setConfirmRestoreOpen(false);
+      setRestoreAppId(undefined);
+    }
+  };
+  // ------------------------
+  // Render
+  // ------------------------
+  return (
+    <div className="dark h-screen bg-gradient-to-br from-black to-slate-900 text-slate-100 relative overflow-hidden">
+      {isLoading && <SystemInitializingOverlay />}
+      <div className="flex flex-col h-full mx-auto p-4 relative z-10 overflow-hidden">
+        <Navbar />
+        <div className="w-full flex flex-row gap-6 flex-grow">
+          <Sidebar />
+          <div className="w-[80%] flex h-[calc(100vh-8rem)]">
+            <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm w-full">
+              <CardHeader className="border-b border-slate-700/50 pb-3">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-slate-100 flex items-center">
+                      <Users className="mr-2 h-5 w-5 text-cyan-500" />
+                      Applications
+                    </CardTitle>
+
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-slate-400 hover:text-cyan-500"
+                        onClick={exportToCSV}
+                      >
+                        Export CSV
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-400"
+                        onClick={getApplications}
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Filters Row */}
+                  <div className="flex flex-wrap gap-3">
+                    <input
+                      type="text"
+                      placeholder="Filter by company"
+                      value={filterCompany}
+                      onChange={(e) => setFilterCompany(e.target.value)}
+                      className="w-48 px-3 py-2 text-sm rounded-lg bg-slate-800 text-slate-100 
+               border border-slate-600 placeholder-slate-400
+               focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="w-40 px-3 py-2 text-sm rounded-lg bg-slate-800 text-slate-100 
+               border border-slate-600 placeholder-slate-400
+               focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                    >
+                      <option value="">All Status</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Generated">Generated</option>
+                      <option value="Downloaded">Downloaded</option>
+                      <option value="Applied">Applied</option>
+                    </select>
+
+                    <input
+                      type="date"
+                      value={filterDate}
+                      onChange={(e) => setFilterDate(e.target.value)}
+                      className="px-3 py-2 text-sm rounded-lg bg-slate-800 text-slate-100 
+               border border-slate-600
+               focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="flex-1 overflow-hidden">
+                <CustomTable
+                  columns={columns}
+                  data={filteredApplications}
+                  rowsPerPage={20}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+        <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Confirm Apply</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-slate-400">
+              Are you sure you want to mark this application as <b>Applied</b>?
+            </p>
+            <DialogFooter className="mt-4 flex justify-end gap-3">
+              <Button autoFocus variant="outline" onClick={confirmApply}>
+                Yes, Apply
+              </Button>
+              <Button variant="secondary" onClick={() => setConfirmOpen(false)}>
+                Cancel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={confirmRestoreOpen} onOpenChange={setConfirmRestoreOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Confirm Restore</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-slate-400">
+              Are you sure you want to mark this application as <b>Generated</b>?
+            </p>
+            <DialogFooter className="mt-4 flex justify-end gap-3">
+              <Button autoFocus variant="outline" onClick={confirmRestore}>
+                Yes, Restore
+              </Button>
+              <Button variant="secondary" onClick={() => setConfirmRestoreOpen(false)}>
+                Cancel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={confirmDelOpen} onOpenChange={setConfirmDelOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Confirm Delete</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-slate-400">
+              Are you sure you want to <b>Delete</b> this application?
+            </p>
+            <DialogFooter className="mt-4 flex justify-end gap-3">
+              <Button autoFocus variant="outline" onClick={confirmDelete}>
+                Yes, Delete
+              </Button>
+              <Button variant="secondary" onClick={() => setConfirmDelOpen(false)}>
+                Cancel
+              </Button>              
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+}
