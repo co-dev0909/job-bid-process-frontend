@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, Users, NotebookPen, Trash2 } from "lucide-react";
+import { Download, Users, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/navbar";
@@ -112,18 +112,18 @@ export default function Applications() {
       header: "Resume",
       accessorKey: "resumeWordPath",
       cell: (row: any) => {
-        if (!row.resumeWordPath)
+        const fileWordUrl = row.driveDocxDownloadLink
+          ? row.driveDocxDownloadLink
+          : row.resumeWordPath
+            ? `${process.env.NEXT_PUBLIC_BACKEND_URL}${row.resumeWordPath}`
+            : null;
+
+        if (!fileWordUrl)
           return (
             <div className="flex justify-center">
               <span className="text-gray-400">N/A</span>
             </div>
           );
-
-        // Build full URL to backend
-        const fileWordUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}${row.resumeWordPath}`;
-        const filePDFUrl = row.resumePDFPath
-          ? `${process.env.NEXT_PUBLIC_BACKEND_URL}${row.resumePDFPath}`
-          : null;
 
         return (
           <div className="flex justify-center">
@@ -131,22 +131,11 @@ export default function Applications() {
               <>
                 <a
                   href={fileWordUrl}
-                  download
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   <Download className="" />
                 </a>
-                {filePDFUrl && (
-                  <a
-                    href={filePDFUrl}
-                    download
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <NotebookPen className="" />
-                  </a>
-                )}
               </>
             )}
           </div>
@@ -157,10 +146,6 @@ export default function Applications() {
       header: "Action",
       accessorKey: "action",
       cell: (row: any) => {
-        const filePDFUrl = row.resumePDFPath
-          ? `${process.env.NEXT_PUBLIC_BACKEND_URL}${row.resumePDFPath}`
-          : "";
-        const profileName = row.profile?.fullName
         return (
           <div
             className={`${
@@ -198,7 +183,7 @@ export default function Applications() {
                       size="sm"
                       className="bg-green-200 text-black cursor-pointer"
                       onClick={() =>
-                        handleOnApply(row._id, row.job_url, filePDFUrl, profileName)
+                        handleOnApply(row._id, row.job_url)
                       }
                     >
                       Apply
@@ -211,7 +196,7 @@ export default function Applications() {
                       size="sm"
                       className="bg-green-200 text-black cursor-pointer"
                       onClick={() =>
-                        handleOnApply(row._id, row.job_url, filePDFUrl, profileName)
+                        handleOnApply(row._id, row.job_url)
                       }
                     >
                       Apply
@@ -286,26 +271,6 @@ export default function Applications() {
     },
     { header: "Job Title", accessorKey: "job_title" },
     {
-      header: "Drive PDF Link",
-      accessorKey: "drivePdfLink",
-      cell: (row: any) => {
-        if (!row.drivePdfLink) {
-          return (
-            <div className="flex justify-center">
-              <span className="text-gray-400">N/A</span>
-            </div>
-          );
-        }
-        return (
-          <div className="max-w-60 truncate text-center" title={row.drivePdfLink}>
-            <a href={row.drivePdfLink} target="_blank" rel="noopener noreferrer">
-              Download PDF
-            </a>
-          </div>
-        );
-      },
-    },
-    {
       header: "Drive Word Link",
       accessorKey: "driveDocxLink",
       cell: (row: any) => {
@@ -319,7 +284,7 @@ export default function Applications() {
         return (
           <div className="max-w-60 truncate text-center" title={row.driveDocxLink}>
             <a href={row.driveDocxLink} target="_blank" rel="noopener noreferrer">
-              Download Word
+              {row.driveDocxLink}
             </a>
           </div>
         );
@@ -483,14 +448,14 @@ export default function Applications() {
       // Define CSV headers
       const headers = [
         'Job Link',
-        'Drive PDF Link',
+        'Drive Word Link',
         'Status'
       ];
 
       // Map applications data to CSV rows
       const rows = filteredApplications.map((app) => [
         `"${app.job_url || ''}"`,
-        `"${app.drivePdfLink || ''}"`,
+        `"${app.driveDocxLink || ''}"`,
         `"${app.status || ''}"`,
       ]);
 
@@ -516,28 +481,10 @@ export default function Applications() {
     }
   }
 
-  const handleOnApply = async (appId: string, jobUrl: string, filePDFUrl: string, profileName: string) => {
+  const handleOnApply = async (appId: string, jobUrl: string) => {
     try {
       if (jobUrl) {
         window.open(jobUrl, "_blank", "noopener,noreferrer");
-      }
-
-      if (filePDFUrl && !filePDFUrl.endsWith("undefined")) {
-        const response = await fetch(filePDFUrl, { mode: "cors" });
-        if (!response.ok) {
-          throw new Error("Failed to download PDF from server.");
-        }
-        const blob = await response.blob();
-        const blobUrl = URL.createObjectURL(blob);
-
-        const link = document.createElement("a");
-        link.href = blobUrl;
-        link.download = `${profileName}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
       }
 
       setPendingApp({ id: appId, url: jobUrl });
