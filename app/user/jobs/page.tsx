@@ -2,8 +2,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trash, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
 
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -20,13 +21,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import SystemInitializingOverlay from "@/components/loading";
-import CustomTable from "@/components/custom-table";
 
 export default function JobsPage() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [profiles, setProfiles] = useState<any[]>([]);
+  const [applications, setApplications] = useState<any[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
-  const [jobs, setJobs] = useState<any[]>([]);
+  const [companyDuplicateAlerted, setCompanyDuplicateAlerted] = useState(false);
   const [formData, setFormData] = useState({
     jobLink: "",
     jobTitle: "",
@@ -34,70 +36,6 @@ export default function JobsPage() {
     jobDescription: "",
     profileId: "",
   });
-
-  // ------------------------
-  // Table Columns
-  // ------------------------
-  const columns = [
-    {
-      header: "NO",
-      accessorKey: "no",
-      cell: (_row: any, index: number) => (
-        <div className="text-center">{index + 1}</div>
-      ),
-    },
-    {
-      header: "Job Link",
-      accessorKey: "jobLink",
-      cell: (row: any) => (
-        <div className="max-w-xs truncate text-center" title={row.jobLink}>
-          <a href={row.jobLink} target="_blank" rel="noopener noreferrer">
-            {row.jobLink}
-          </a>
-        </div>
-      ),
-    },
-    {
-      header: "Job Description",
-      accessorKey: "jobDescription",
-      cell: (row: any) => (
-        <div
-          className="max-w-xs truncate text-center"
-          title={row.jobDescription}
-        >
-          {row.jobDescription}
-        </div>
-      ),
-    },
-    {
-      header: "Profile",
-      accessorKey: "profile",
-      cell: (row: any) => (
-        <div className="text-center">{row.profile?.fullName}</div>
-      ),
-    },
-    // {
-    //   header: "Status",
-    //   accessorKey: "status",
-    //   cell: (row: any) => <div className="text-center">{row.status}</div>,
-    // },
-    {
-      header: "",
-      accessorKey: "action",
-      cell: (row: any) => (
-        <div className="flex justify-center">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => handleDeleteClick(row._id)}
-            className="cursor-pointer"
-          >
-            <Trash className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-    },
-  ];
 
   // ------------------------
   // Lifecycle
@@ -111,14 +49,7 @@ export default function JobsPage() {
 
   useEffect(() => {
     getProfiles();
-    getJobs();
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      getJobs();
-    }, 5000); // every 10s
-    return () => clearInterval(interval);
+    getApplications();
   }, []);
 
   // ------------------------
@@ -155,29 +86,6 @@ export default function JobsPage() {
     }
   };
 
-  const getJobs = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/jobs`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setJobs(data.data);
-      } else {
-        console.error(data.error);
-      }
-    } catch (error) {
-      console.error("An unexpected error occurred while getting jobs:", error);
-    } finally {
-    }
-  };
-
   const handleAddJob = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -188,6 +96,13 @@ export default function JobsPage() {
       ) {
         toast.warn(
           "Please fill in all required fields (Job Link, Job Description, Profile)."
+        );
+        return;
+      }
+
+      if (isDuplicateCompany) {
+        toast.warn(
+          "This company already exists for the selected profile. Please use a different company."
         );
         return;
       }
@@ -219,8 +134,10 @@ export default function JobsPage() {
           jobDescription: "",
           profileId: "",
         });
-        // setSelectedProfile(null);
-        getJobs();
+        setSelectedProfile(null);
+        setTimeout(() => {
+          router.push("/user/applications");
+        }, 300);
       } else {
         toast.error(data.message);
       }
@@ -230,15 +147,13 @@ export default function JobsPage() {
     }
   };
 
-  const handleDeleteClick = async (jobId: string) => {
-    if (!window.confirm("Are you sure you want to delete this job?")) return;
-
+  const getApplications = async () => {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/jobs/${jobId}`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/applications`,
         {
-          method: "DELETE",
+          method: "GET",
           headers: {
             "Content-Type": "application/json",
             ...(token && { Authorization: `Bearer ${token}` }),
@@ -246,17 +161,32 @@ export default function JobsPage() {
         }
       );
 
-      if (res.status === 204) {
-        toast.success("Job deleted successfully!");
-        // Remove job from state without reloading all
-        setJobs((prev) => prev.filter((job) => job._id !== jobId));
-      } else {
-        const data = await res.json();
-        toast.error(data.message || "Failed to delete job.");
+      const data = await res.json();
+      if (data.success) {
+        setApplications(data.data || []);
       }
-    } catch (err) {
-      console.error("Delete error:", err);
-      toast.error("Error deleting job. Please try again.");
+    } catch (error) {
+      console.error(
+        "An unexpected error occurred while getting applications:",
+        error
+      );
+    }
+  };
+
+  const normalizedCompany = formData.companyName.trim().toLowerCase();
+  const isDuplicateCompany =
+    !!selectedProfile &&
+    !!normalizedCompany &&
+    applications.some(
+      (application) =>
+        application.profile?._id === selectedProfile._id &&
+        application.company?.trim().toLowerCase() === normalizedCompany
+    );
+
+  const handleCompanyBlur = () => {
+    if (isDuplicateCompany && !companyDuplicateAlerted) {
+      toast.warn("This company already exists for the selected profile.");
+      setCompanyDuplicateAlerted(true);
     }
   };
 
@@ -270,9 +200,7 @@ export default function JobsPage() {
         <Navbar />
         <div className="flex flex-row gap-6 flex-grow">
           <Sidebar />
-          <div className="flex flex-col gap-6 w-full h-[calc(100vh-8rem)] ">
-            
-            {/* Right: Jobs Table */}
+          <div className="flex w-full h-[calc(100vh-8rem)]">
             <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm w-full">
               <CardHeader className="border-b border-slate-700/50 pb-3">
                 <CardTitle className="text-slate-100 flex items-center">
@@ -334,13 +262,23 @@ export default function JobsPage() {
                       placeholder="Enter Company Name"
                       value={formData.companyName}
                       onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          companyName: e.target.value,
-                        }))
+                        {
+                          setCompanyDuplicateAlerted(false);
+                          setFormData((prev) => ({
+                            ...prev,
+                            companyName: e.target.value,
+                          }));
+                        }
                       }
+                      onBlur={handleCompanyBlur}
+                      aria-invalid={isDuplicateCompany}
                     />
                   </div>
+                  {isDuplicateCompany && (
+                    <p className="text-sm text-red-400 pl-40">
+                      This company already exists for the selected profile.
+                    </p>
+                  )}
 
                   <div className="flex flex-row items-center gap-4">
                     <Label
@@ -371,16 +309,24 @@ export default function JobsPage() {
                         const profile = profiles.find(
                           (p: any) => p._id === value
                         );
+                        setCompanyDuplicateAlerted(false);
                         setSelectedProfile(profile);
                       }}
                     >
-                      <SelectTrigger className="w-full text-slate-200">
+                      <SelectTrigger
+                        className="w-full text-slate-200"
+                        data-autofill="profile-trigger"
+                      >
                         <SelectValue placeholder="Select a profile" />
                       </SelectTrigger>
                       <SelectContent>
                         {profiles.length > 0 &&
                           profiles.map((profile: any) => (
-                            <SelectItem key={profile._id} value={profile._id}>
+                            <SelectItem
+                              key={profile._id}
+                              value={profile._id}
+                              data-profile-name={profile.fullName}
+                            >
                               {profile.fullName}
                             </SelectItem>
                           ))}
@@ -393,24 +339,14 @@ export default function JobsPage() {
                       variant="secondary"
                       size="sm"
                       onClick={handleAddJob}
-                      className="cursor-pointer w-1/2"
+                      disabled={isDuplicateCompany}
+                      data-autofill="save-job"
+                      className="cursor-pointer w-full sm:w-48"
                     >
                       Save
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            {/* Left: Add Job Form */}
-            <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm w-full flex-1">
-              <CardHeader className="border-b border-slate-700/50 pb-3">
-                <CardTitle className="text-slate-100 flex items-center">
-                  <Users className="mr-2 h-5 w-5 text-cyan-500" />
-                  Jobs
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CustomTable columns={columns} data={jobs} rowsPerPage={20} />
               </CardContent>
             </Card>
           </div>

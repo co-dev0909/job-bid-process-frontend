@@ -21,6 +21,16 @@ import {
 import { toast } from "react-toastify";
 
 export default function Applications() {
+  const panelClassName =
+    "border border-white/8 bg-[#121821]/88 shadow-[0_24px_80px_rgba(0,0,0,0.24)] backdrop-blur-md";
+  const fieldClassName =
+    "rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/25 focus:border-cyan-400/35";
+  const modalClassName =
+    "sm:max-w-md border border-white/10 bg-[#151c26] text-slate-100 shadow-[0_28px_90px_rgba(0,0,0,0.42)]";
+  const modalPrimaryButtonClassName =
+    "border-white/10 bg-white/[0.05] text-slate-100 hover:bg-white/[0.08] hover:text-white";
+  const modalSecondaryButtonClassName =
+    "bg-white/[0.06] text-slate-100 hover:bg-white/[0.1]";
   const [isLoading, setIsLoading] = useState(true);
   const [applications, setApplications] = useState<any[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -585,19 +595,19 @@ export default function Applications() {
   // Render
   // ------------------------
   return (
-    <div className="dark h-screen bg-gradient-to-br from-black to-slate-900 text-slate-100 relative overflow-hidden">
+    <div className="dark h-screen bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.08),_transparent_28%),linear-gradient(180deg,#0b1015_0%,#0f141b_52%,#111922_100%)] text-slate-100 relative overflow-hidden">
       {isLoading && <SystemInitializingOverlay />}
       <div className="flex flex-col h-full mx-auto p-4 relative z-10 overflow-hidden">
         <Navbar />
         <div className="w-full flex flex-row gap-6 flex-grow">
           <Sidebar />
           <div className="w-[80%] flex h-[calc(100vh-8rem)]">
-            <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm w-full">
-              <CardHeader className="border-b border-slate-700/50 pb-3">
+            <Card className={`${panelClassName} w-full`}>
+              <CardHeader className="border-b border-white/8 pb-3">
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-slate-100 flex items-center">
-                      <Users className="mr-2 h-5 w-5 text-cyan-500" />
+                    <CardTitle className="flex items-center text-slate-100">
+                      <Users className="mr-2 h-5 w-5 text-cyan-400" />
                       Applications
                     </CardTitle>
 
@@ -605,7 +615,7 @@ export default function Applications() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-slate-400 hover:text-cyan-500"
+                        className="text-slate-400 hover:bg-white/[0.04] hover:text-cyan-300"
                         onClick={exportToCSV}
                       >
                         Export CSV
@@ -613,7 +623,7 @@ export default function Applications() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-slate-400"
+                        className="h-8 w-8 text-slate-400 hover:bg-white/[0.04] hover:text-cyan-300"
                         onClick={getApplications}
                       >
                         <RefreshCw className="h-4 w-4" />
@@ -628,17 +638,13 @@ export default function Applications() {
                       placeholder="Filter by company"
                       value={filterCompany}
                       onChange={(e) => setFilterCompany(e.target.value)}
-                      className="w-48 px-3 py-2 text-sm rounded-lg bg-slate-800 text-slate-100 
-               border border-slate-600 placeholder-slate-400
-               focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                      className={`w-48 ${fieldClassName}`}
                     />
 
                     <select
                       value={filterStatus}
                       onChange={(e) => setFilterStatus(e.target.value)}
-                      className="w-40 px-3 py-2 text-sm rounded-lg bg-slate-800 text-slate-100 
-               border border-slate-600 placeholder-slate-400
-               focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                      className={`w-40 ${fieldClassName}`}
                     >
                       <option value="">All Status</option>
                       <option value="Pending">Pending</option>
@@ -651,9 +657,7 @@ export default function Applications() {
                       type="date"
                       value={filterDate}
                       onChange={(e) => setFilterDate(e.target.value)}
-                      className="px-3 py-2 text-sm rounded-lg bg-slate-800 text-slate-100 
-               border border-slate-600
-               focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                      className={fieldClassName}
                     />
                   </div>
                 </div>
@@ -670,54 +674,81 @@ export default function Applications() {
           </div>
         </div>
         <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className={modalClassName}>
             <DialogHeader>
-              <DialogTitle>Confirm Apply</DialogTitle>
+              <DialogTitle className="text-slate-100">Confirm Apply</DialogTitle>
             </DialogHeader>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm leading-6 text-slate-400">
               Are you sure you want to mark this application as <b>Applied</b>?
             </p>
             <DialogFooter className="mt-4 flex justify-end gap-3">
-              <Button autoFocus variant="outline" onClick={confirmApply}>
+              <Button
+                autoFocus
+                variant="outline"
+                className={modalPrimaryButtonClassName}
+                onClick={confirmApply}
+              >
                 Yes, Apply
               </Button>
-              <Button variant="secondary" onClick={() => setConfirmOpen(false)}>
+              <Button
+                variant="secondary"
+                className={modalSecondaryButtonClassName}
+                onClick={() => setConfirmOpen(false)}
+              >
                 Cancel
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
         <Dialog open={confirmRestoreOpen} onOpenChange={setConfirmRestoreOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className={modalClassName}>
             <DialogHeader>
-              <DialogTitle>Confirm Restore</DialogTitle>
+              <DialogTitle className="text-slate-100">Confirm Restore</DialogTitle>
             </DialogHeader>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm leading-6 text-slate-400">
               Are you sure you want to mark this application as <b>Generated</b>?
             </p>
             <DialogFooter className="mt-4 flex justify-end gap-3">
-              <Button autoFocus variant="outline" onClick={confirmRestore}>
+              <Button
+                autoFocus
+                variant="outline"
+                className={modalPrimaryButtonClassName}
+                onClick={confirmRestore}
+              >
                 Yes, Restore
               </Button>
-              <Button variant="secondary" onClick={() => setConfirmRestoreOpen(false)}>
+              <Button
+                variant="secondary"
+                className={modalSecondaryButtonClassName}
+                onClick={() => setConfirmRestoreOpen(false)}
+              >
                 Cancel
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
         <Dialog open={confirmDelOpen} onOpenChange={setConfirmDelOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className={modalClassName}>
             <DialogHeader>
-              <DialogTitle>Confirm Delete</DialogTitle>
+              <DialogTitle className="text-slate-100">Confirm Delete</DialogTitle>
             </DialogHeader>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm leading-6 text-slate-400">
               Are you sure you want to <b>Delete</b> this application?
             </p>
             <DialogFooter className="mt-4 flex justify-end gap-3">
-              <Button autoFocus variant="outline" onClick={confirmDelete}>
+              <Button
+                autoFocus
+                variant="outline"
+                className="border-red-400/15 bg-red-500/[0.08] text-red-100 hover:bg-red-500/[0.14] hover:text-white"
+                onClick={confirmDelete}
+              >
                 Yes, Delete
               </Button>
-              <Button variant="secondary" onClick={() => setConfirmDelOpen(false)}>
+              <Button
+                variant="secondary"
+                className={modalSecondaryButtonClassName}
+                onClick={() => setConfirmDelOpen(false)}
+              >
                 Cancel
               </Button>              
             </DialogFooter>

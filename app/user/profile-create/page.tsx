@@ -476,14 +476,11 @@ export default function Profiles() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem key="1" value="1">template1</SelectItem>
-                            <SelectItem key="2" value="2">Alex</SelectItem>
-                            <SelectItem key="3" value="3">Aaron</SelectItem>
-                            <SelectItem key="4" value="4">Akil</SelectItem>
-                            <SelectItem key="5" value="5">Adrianna</SelectItem>
-                            <SelectItem key="6" value="6">Axel</SelectItem>
-                            <SelectItem key="7" value="7">Kevin</SelectItem>
-                            <SelectItem key="8" value="8">Cody</SelectItem>
-                            <SelectItem key="8" value="9">Alex2</SelectItem>
+                            <SelectItem key="2" value="2">template2</SelectItem>
+                            <SelectItem key="3" value="3">template3</SelectItem>
+                            <SelectItem key="4" value="4">template4</SelectItem>
+                            <SelectItem key="5" value="5">template5</SelectItem>
+                            <SelectItem key="6" value="6">template6</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
