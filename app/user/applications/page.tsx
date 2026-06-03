@@ -11,6 +11,13 @@ import SystemInitializingOverlay from "@/components/loading";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import CustomTable from "@/components/custom-table";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -642,17 +649,23 @@ export default function Applications() {
                       className={`w-48 ${fieldClassName}`}
                     />
 
-                    <select
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                      className={`w-40 ${fieldClassName}`}
+                    <Select
+                      value={filterStatus || "all"}
+                      onValueChange={(value) =>
+                        setFilterStatus(value === "all" ? "" : value)
+                      }
                     >
-                      <option value="">All Status</option>
-                      <option value="Pending">Pending</option>
-                      <option value="Generated">Generated</option>
-                      <option value="Downloaded">Downloaded</option>
-                      <option value="Applied">Applied</option>
-                    </select>
+                      <SelectTrigger className={`w-40 ${fieldClassName}`}>
+                        <SelectValue placeholder="All Status" />
+                      </SelectTrigger>
+                      <SelectContent className="border-white/10 bg-[#151c26] text-slate-100">
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="Pending">Pending</SelectItem>
+                        <SelectItem value="Generated">Generated</SelectItem>
+                        <SelectItem value="Downloaded">Downloaded</SelectItem>
+                        <SelectItem value="Applied">Applied</SelectItem>
+                      </SelectContent>
+                    </Select>
 
                     <input
                       type="date"
