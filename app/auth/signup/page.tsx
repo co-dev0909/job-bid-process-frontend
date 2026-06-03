@@ -66,6 +66,9 @@ export default function SignupPage() {
     if (res.ok) {
       // Save JWT in localStorage or cookies
       localStorage.setItem('token', data.token);
+      if (data.user) {
+        localStorage.setItem("bd_user", JSON.stringify(data.user));
+      }
       router.push("/user/jobs");
     } else {
       console.log(data.message);

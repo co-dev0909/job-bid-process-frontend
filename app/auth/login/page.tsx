@@ -36,6 +36,9 @@ export default function LoginPage() {
 
     if (res.ok) {
       localStorage.setItem('token', data.token);
+      if (data.user) {
+        localStorage.setItem("bd_user", JSON.stringify(data.user));
+      }
       router.push("/user/jobs");
     } else {
     }
