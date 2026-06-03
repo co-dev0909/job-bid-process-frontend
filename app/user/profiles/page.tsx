@@ -30,6 +30,12 @@ import {
 } from "@/components/ui/dialog";
 
 export default function Profiles() {
+  const panelClassName =
+    "border border-white/8 bg-[#121821]/88 shadow-[0_24px_80px_rgba(0,0,0,0.24)] backdrop-blur-md";
+  const fieldClassName =
+    "border border-white/10 bg-white/[0.04] text-slate-100 placeholder:text-slate-500 focus-visible:border-cyan-400/35 focus-visible:ring-cyan-400/25";
+  const modalClassName =
+    "h-[90%] min-w-[70%] border border-white/10 bg-[#151c26] text-slate-100 shadow-[0_28px_90px_rgba(0,0,0,0.42)]";
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRow, setSelectedRow] = useState<any | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
@@ -263,26 +269,28 @@ export default function Profiles() {
     setIsLoading(false);
   };
   return (
-    <div className="dark h-screen bg-gradient-to-br from-black to-slate-900 text-slate-100 relative overflow-hidden">
+    <div className="dark relative h-screen overflow-hidden bg-slate-950 text-slate-100">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_30%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-900/95" />
       {isLoading && <SystemInitializingOverlay />}
-      <div className="flex flex-col h-full mx-auto p-4 relative z-10 overflow-hidden">
+      <div className="relative z-10 mx-auto flex h-full flex-col overflow-hidden p-4">
         <Navbar />
         <div className="flex flex-row gap-6 flex-grow">
           <Sidebar />
           <div className="w-full h-[calc(100vh-8rem)]">
             <div className="flex h-[calc(100vh-8rem)]">
-              <Card className="w-full bg-slate-900/50 border-slate-700/50 backdrop-blur-sm overflow-hidden">
-                <CardHeader className="border-b border-slate-700/50 pb-3">
+              <Card className={`${panelClassName} w-full overflow-hidden`}>
+                <CardHeader className="border-b border-white/8 pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-slate-100 flex items-center">
-                      <Users className="mr-2 h-5 w-5 text-cyan-500" />
+                      <Users className="mr-2 h-5 w-5 text-cyan-400" />
                       Profiles
                     </CardTitle>
                     <div className="flex items-center space-x-2">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-slate-400"
+                        className="h-8 w-8 text-slate-400 hover:bg-white/[0.04] hover:text-cyan-300"
                         onClick={getProfiles}
                       >
                         <RefreshCw className="h-4 w-4" />
@@ -298,7 +306,7 @@ export default function Profiles() {
                       rowsPerPage={20}
                     />
                     <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-                      <DialogContent className="h-[90%] min-w-[70%] bg-slate-900 grid-cols-1 text-slate-100 border-slate-900">
+                      <DialogContent className={`${modalClassName} grid-cols-1`}>
                         <DialogHeader>
                           <DialogTitle>Edit Profile</DialogTitle>
                           <DialogDescription>
@@ -318,7 +326,7 @@ export default function Profiles() {
                               </Label>
                               <Input
                                 id="fullName"
-                                className="bg-slate-800/50 border-slate-700 text-slate-100"
+                                className={fieldClassName}
                                 value={selectedRow?.fullName || ""}
                                 onChange={(e) =>
                                   setSelectedRow((prev: any) => ({
@@ -337,7 +345,7 @@ export default function Profiles() {
                               </Label>
                               <Input
                                 id="email"
-                                className="bg-slate-800/50 border-slate-700 text-slate-100"
+                                className={fieldClassName}
                                 value={selectedRow?.email || ""}
                                 onChange={(e) =>
                                   setSelectedRow((prev: any) => ({
@@ -356,7 +364,7 @@ export default function Profiles() {
                               </Label>
                               <Input
                                 id="phone"
-                                className="bg-slate-800/50 border-slate-700 text-slate-100"
+                                className={fieldClassName}
                                 value={selectedRow?.phone || ""}
                                 onChange={(e) =>
                                   setSelectedRow((prev: any) => ({
@@ -378,7 +386,7 @@ export default function Profiles() {
                               </Label>
                               <Input
                                 id="location"
-                                className="bg-slate-800/50 border-slate-700 text-slate-100"
+                                className={fieldClassName}
                                 value={selectedRow?.location || ""}
                                 onChange={(e) =>
                                   setSelectedRow((prev: any) => ({
@@ -400,7 +408,7 @@ export default function Profiles() {
                               </Label>
                               <Input
                                 id="linkedin"
-                                className="bg-slate-800/50 border-slate-700 text-slate-100"
+                                className={fieldClassName}
                                 value={selectedRow?.linkedin || ""}
                                 onChange={(e) =>
                                   setSelectedRow((prev: any) => ({
@@ -418,10 +426,10 @@ export default function Profiles() {
                                 Profile
                               </Label>
                               <Select value={selectedRow?.template} onValueChange={(value: string) => setSelectedRow((prev:any) => ({ ...prev, template: value }))}>
-                                <SelectTrigger className="w-full bg-slate-800/50 border-slate-700 text-slate-100">
+                                <SelectTrigger className={`w-full ${fieldClassName}`}>
                                   <SelectValue placeholder="Select a template" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="border-white/10 bg-[#151c26] text-slate-100">
                                   <SelectItem key="1" value="1">template1</SelectItem>
                                   <SelectItem key="2" value="2">template2</SelectItem>
                                   <SelectItem key="3" value="3">template3</SelectItem>
@@ -451,7 +459,7 @@ export default function Profiles() {
                                 <div className="space-y-4 mb-8" key={index}>
                                   <Input
                                     id="universityName"
-                                    className="bg-slate-800/50 border-slate-700 text-slate-100 w-full"
+                                    className={`${fieldClassName} w-full`}
                                     value={education.universityName || ""}
                                     onChange={(e) => {
                                       const updated = [...selectedRow.educations];
@@ -466,7 +474,7 @@ export default function Profiles() {
 
                                   <Input
                                     id="universityDegree"
-                                    className="bg-slate-800/50 border-slate-700 text-slate-100 w-full"
+                                    className={`${fieldClassName} w-full`}
                                     value={education.universityDegree || ""}
                                     onChange={(e) => {
                                       const updated = [...selectedRow.educations];
@@ -481,7 +489,7 @@ export default function Profiles() {
 
                                   <Input
                                     id="universityLocation"
-                                    className="bg-slate-800/50 border-slate-700 text-slate-100 w-full"
+                                    className={`${fieldClassName} w-full`}
                                     value={education.universityLocation || ""}
                                     onChange={(e) => {
                                       const updated = [...selectedRow.educations];
@@ -498,7 +506,7 @@ export default function Profiles() {
                                     <div className="col-span-12 md:col-span-5 lg:col-span-5">
                                       <Input
                                         id="enterDate"
-                                        className="bg-slate-800/50 border-slate-700 text-slate-100 w-full"
+                                        className={`${fieldClassName} w-full`}
                                         value={education.enterDate || ""}
                                         onChange={(e) => {
                                           const updated = [...selectedRow.educations];
@@ -514,7 +522,7 @@ export default function Profiles() {
                                     <div className="col-span-12 md:col-span-5 lg:col-span-5">
                                       <Input
                                         id="endDate"
-                                        className="bg-slate-800/50 border-slate-700 text-slate-100 w-full"
+                                        className={`${fieldClassName} w-full`}
                                         value={education.endDate || ""}
                                         onChange={(e) => {
                                           const updated = [...selectedRow.educations];
@@ -576,7 +584,7 @@ export default function Profiles() {
                                                 experiences: updated,
                                               }));
                                             }}
-                                            className="bg-slate-800/50 border-slate-700 text-slate-100 col-span-5"
+                                            className={`${fieldClassName} col-span-5`}
                                             placeholder="Job Title"
                                           />
                                           <Input
@@ -592,7 +600,7 @@ export default function Profiles() {
                                                 experiences: updated,
                                               }));
                                             }}
-                                            className="bg-slate-800/50 border-slate-700 text-slate-100 col-span-3"
+                                            className={`${fieldClassName} col-span-3`}
                                             placeholder="Work Setting"
                                           />
                                           <Input
@@ -608,7 +616,7 @@ export default function Profiles() {
                                                 experiences: updated,
                                               }));
                                             }}
-                                            className="bg-slate-800/50 border-slate-700 text-slate-100 col-span-5"
+                                            className={`${fieldClassName} col-span-5`}
                                             placeholder="Company Name"
                                           />
                                           <Input
@@ -624,7 +632,7 @@ export default function Profiles() {
                                                 experiences: updated,
                                               }));
                                             }}
-                                            className="bg-slate-800/50 border-slate-700 text-slate-100 col-span-4"
+                                            className={`${fieldClassName} col-span-4`}
                                             placeholder="Company Location"
                                           />
                                           <Input
@@ -640,7 +648,7 @@ export default function Profiles() {
                                                 experiences: updated,
                                               }));
                                             }}
-                                            className="bg-slate-800/50 border-slate-700 text-slate-100 col-span-3"
+                                            className={`${fieldClassName} col-span-3`}
                                             placeholder="Begin Date"
                                           />
                                           <Input
@@ -656,7 +664,7 @@ export default function Profiles() {
                                                 experiences: updated,
                                               }));
                                             }}
-                                            className="bg-slate-800/50 border-slate-700 text-slate-100 col-span-3"
+                                            className={`${fieldClassName} col-span-3`}
                                             placeholder="End Date"
                                           />
                                           <Textarea
@@ -676,7 +684,7 @@ export default function Profiles() {
                                                 experiences: updated,
                                               }));
                                             }}
-                                            className="bg-slate-800/50 h-[120px] resize-none border-slate-700 text-slate-100 col-span-23"
+                                            className={`${fieldClassName} col-span-23 h-[120px] resize-none`}
                                             placeholder="Company Information"
                                           />
                                           <div className="flex items-end justify-start">
@@ -703,7 +711,12 @@ export default function Profiles() {
                           <Button type="button" variant="destructive" onClick={handleDialogClose}>
                             Cancel
                           </Button>
-                          <Button type="button" variant="secondary" onClick={handleUpdateProfile}>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="border border-cyan-400/15 bg-cyan-500/[0.12] text-cyan-100 hover:bg-cyan-500/[0.18] hover:text-white"
+                            onClick={handleUpdateProfile}
+                          >
                             Save
                           </Button>
                         </DialogFooter>
@@ -723,7 +736,7 @@ export default function Profiles() {
               <Link href="/user/profile-create">
                 <Button
                   size="lg"
-                  className="h-14 w-14 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 shadow-lg shadow-cyan-500/25"
+                  className="h-14 w-14 rounded-full border border-cyan-300/15 bg-gradient-to-r from-cyan-500 to-sky-500 text-slate-950 shadow-lg shadow-cyan-500/25 hover:from-cyan-400 hover:to-sky-400"
                 >
                   <Plus className="h-6 w-6" />
                 </Button>
