@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -595,9 +594,11 @@ export default function Applications() {
   // Render
   // ------------------------
   return (
-    <div className="dark h-screen bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.08),_transparent_28%),linear-gradient(180deg,#0b1015_0%,#0f141b_52%,#111922_100%)] text-slate-100 relative overflow-hidden">
+    <div className="dark relative h-screen overflow-hidden bg-slate-950 text-slate-100">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_30%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-900/95" />
       {isLoading && <SystemInitializingOverlay />}
-      <div className="flex flex-col h-full mx-auto p-4 relative z-10 overflow-hidden">
+      <div className="relative z-10 mx-auto flex h-full flex-col overflow-hidden p-4">
         <Navbar />
         <div className="w-full flex flex-row gap-6 flex-grow">
           <Sidebar />
