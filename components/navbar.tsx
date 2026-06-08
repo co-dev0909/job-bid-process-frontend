@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
   Bell,
-  Copy,
   Hexagon,
   LogOut,
   MonitorCog,
@@ -58,6 +57,7 @@ type DialogView =
   | null;
 
 type MonitorRange = "daily" | "weekly" | "monthly";
+type AiProvider = "deepseek" | "openai";
 
 type Preferences = {
   compactMode: boolean;
@@ -94,6 +94,18 @@ type PasswordForm = {
   confirmPassword: string;
 };
 
+type SecuritySettings = {
+  provider: AiProvider;
+  deepseekApiKey: string;
+  openaiApiKey: string;
+};
+
+type SecurityDraft = {
+  provider: AiProvider;
+  deepseekApiKey: string;
+  openaiApiKey: string;
+};
+
 type GraphPoint = {
   label: string;
   count: number;
@@ -115,6 +127,18 @@ const EMPTY_PASSWORD_FORM: PasswordForm = {
   currentPassword: "",
   newPassword: "",
   confirmPassword: "",
+};
+
+const DEFAULT_SECURITY_SETTINGS: SecuritySettings = {
+  provider: "deepseek",
+  deepseekApiKey: "",
+  openaiApiKey: "",
+};
+
+const EMPTY_SECURITY_DRAFT: SecurityDraft = {
+  provider: "deepseek",
+  deepseekApiKey: "",
+  openaiApiKey: "",
 };
 
 function decodeTokenPayload(token: string | null) {
@@ -171,6 +195,18 @@ function getApplicationDate(application: ApplicationRecord) {
 
   const date = new Date(rawDate);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function maskApiKey(value: string) {
+  if (!value) {
+    return "Not configured";
+  }
+
+  if (value.length <= 8) {
+    return "Configured";
+  }
+
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
 }
 
 function startOfWeek(date: Date) {
@@ -292,6 +328,9 @@ export default function Navbar() {
   });
   const [preferences, setPreferences] = useState<Preferences>(DEFAULT_PREFERENCES);
   const [passwordForm, setPasswordForm] = useState<PasswordForm>(EMPTY_PASSWORD_FORM);
+  const [securitySettings, setSecuritySettings] =
+    useState<SecuritySettings>(DEFAULT_SECURITY_SETTINGS);
+  const [securityDraft, setSecurityDraft] = useState<SecurityDraft>(EMPTY_SECURITY_DRAFT);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [applications, setApplications] = useState<ApplicationRecord[]>([]);
   const [isLoadingApplications, setIsLoadingApplications] = useState(false);
@@ -321,6 +360,18 @@ export default function Navbar() {
         });
       } catch (_error) {
         setPreferences(DEFAULT_PREFERENCES);
+      }
+    }
+
+    const rawSecuritySettings = localStorage.getItem("bd_security_settings");
+    if (rawSecuritySettings) {
+      try {
+        setSecuritySettings({
+          ...DEFAULT_SECURITY_SETTINGS,
+          ...JSON.parse(rawSecuritySettings),
+        });
+      } catch (_error) {
+        setSecuritySettings(DEFAULT_SECURITY_SETTINGS);
       }
     }
   }, []);
@@ -391,6 +442,16 @@ export default function Navbar() {
       setPasswordForm(EMPTY_PASSWORD_FORM);
     }
   }, [activeDialog]);
+
+  useEffect(() => {
+    if (activeDialog === "security") {
+      setSecurityDraft({
+        provider: securitySettings.provider,
+        deepseekApiKey: "",
+        openaiApiKey: "",
+      });
+    }
+  }, [activeDialog, securitySettings.provider]);
 
   useEffect(() => {
     if (activeDialog !== "monitor" || !token) {
@@ -490,20 +551,6 @@ export default function Navbar() {
     toast.success("Preferences saved on this device.");
   };
 
-  const handleCopyToken = async () => {
-    if (!token) {
-      toast.warn("No active token found.");
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(token);
-      toast.success("Session token copied.");
-    } catch (_error) {
-      toast.error("Unable to copy the session token.");
-    }
-  };
-
   const handleChangePassword = async () => {
     if (!token) {
       toast.error("You must be signed in to change your password.");
@@ -553,9 +600,36 @@ export default function Navbar() {
     }
   };
 
-  const tokenPreview = token
-    ? `${token.slice(0, 12)}...${token.slice(-12)}`
-    : "No active token";
+  const handleSaveSecuritySettings = () => {
+    const activeKey =
+      securityDraft.provider === "deepseek"
+        ? securityDraft.deepseekApiKey.trim() || securitySettings.deepseekApiKey.trim()
+        : securityDraft.openaiApiKey.trim() || securitySettings.openaiApiKey.trim();
+
+    if (!activeKey) {
+      toast.warn(
+        securityDraft.provider === "deepseek"
+          ? "Please enter a DeepSeek API key."
+          : "Please enter an OpenAI API key."
+      );
+      return;
+    }
+
+    const nextSettings = {
+      provider: securityDraft.provider,
+      deepseekApiKey:
+        securityDraft.deepseekApiKey.trim() || securitySettings.deepseekApiKey.trim(),
+      openaiApiKey:
+        securityDraft.openaiApiKey.trim() || securitySettings.openaiApiKey.trim(),
+    };
+
+    setSecuritySettings(nextSettings);
+    localStorage.setItem("bd_security_settings", JSON.stringify(nextSettings));
+    setActiveDialog(null);
+    toast.success(
+      `Security Center updated. ${nextSettings.provider === "deepseek" ? "DeepSeek" : "OpenAI"} is now active.`
+    );
+  };
 
   return (
     <>
@@ -563,7 +637,7 @@ export default function Navbar() {
         <div className="flex items-center space-x-2">
           <Hexagon className="h-8 w-8 text-cyan-500" />
           <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-xl font-bold text-transparent">
-            Job Portal
+            KULA Hub
           </span>
         </div>
 
@@ -897,40 +971,103 @@ export default function Navbar() {
         open={activeDialog === "security"}
         onOpenChange={(open) => setActiveDialog(open ? "security" : null)}
       >
-        <DialogContent className={`${DIALOG_CLASS_NAME} sm:max-w-lg`}>
+          <DialogContent className={`${DIALOG_CLASS_NAME} sm:max-w-lg`}>
           <DialogHeader>
             <DialogTitle>Security Center</DialogTitle>
             <DialogDescription className="text-slate-400">
-              Review the current local session and take quick security actions.
+              Choose the active AI provider and store its API key for this browser.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="rounded-lg border border-white/8 bg-white/[0.03] p-4">
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-100">Session Status</span>
-                <Badge
-                  className={
-                    token
-                      ? "bg-emerald-500/15 text-emerald-300"
-                      : "bg-red-500/15 text-red-300"
-                  }
-                >
-                  {token ? "Authenticated" : "Signed Out"}
+                <span className="text-sm font-medium text-slate-100">Active Provider</span>
+                <Badge className="bg-cyan-500/15 text-cyan-300">
+                  {securityDraft.provider === "deepseek" ? "DeepSeek" : "OpenAI"}
                 </Badge>
               </div>
-              <p className="break-all text-xs text-slate-400">{tokenPreview}</p>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={
+                    securityDraft.provider === "deepseek"
+                      ? "border-cyan-400/35 bg-cyan-500/[0.12] text-cyan-100 hover:bg-cyan-500/[0.18]"
+                      : "border-white/10 bg-white/[0.05] text-slate-100 hover:bg-white/[0.08]"
+                  }
+                  onClick={() =>
+                    setSecurityDraft((prev) => ({ ...prev, provider: "deepseek" }))
+                  }
+                >
+                  Use DeepSeek
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={
+                    securityDraft.provider === "openai"
+                      ? "border-cyan-400/35 bg-cyan-500/[0.12] text-cyan-100 hover:bg-cyan-500/[0.18]"
+                      : "border-white/10 bg-white/[0.05] text-slate-100 hover:bg-white/[0.08]"
+                  }
+                  onClick={() =>
+                    setSecurityDraft((prev) => ({ ...prev, provider: "openai" }))
+                  }
+                >
+                  Use OpenAI
+                </Button>
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                className="border-white/10 bg-white/[0.05] text-slate-100 hover:bg-white/[0.08]"
-                onClick={handleCopyToken}
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                Copy Token
-              </Button>
+            <div className="space-y-2 rounded-lg border border-white/8 bg-white/[0.03] p-4">
+              <Label htmlFor="deepseekApiKey" className="text-slate-300">
+                DeepSeek API Key
+              </Label>
+              <Input
+                id="deepseekApiKey"
+                type="password"
+                className={FIELD_CLASS_NAME}
+                value={securityDraft.deepseekApiKey}
+                name="deepseek-api-key"
+                autoComplete="new-password"
+                data-lpignore="true"
+                onChange={(e) =>
+                  setSecurityDraft((prev) => ({
+                    ...prev,
+                    deepseekApiKey: e.target.value,
+                  }))
+                }
+                placeholder="sk-..."
+              />
+              <p className="text-xs text-slate-500">
+                Stored locally. Current value: {maskApiKey(securitySettings.deepseekApiKey)}
+              </p>
+            </div>
+
+            <div className="space-y-2 rounded-lg border border-white/8 bg-white/[0.03] p-4">
+              <Label htmlFor="openaiApiKey" className="text-slate-300">
+                OpenAI API Key
+              </Label>
+              <Input
+                id="openaiApiKey"
+                type="password"
+                className={FIELD_CLASS_NAME}
+                value={securityDraft.openaiApiKey}
+                name="openai-api-key"
+                autoComplete="new-password"
+                data-lpignore="true"
+                onChange={(e) =>
+                  setSecurityDraft((prev) => ({
+                    ...prev,
+                    openaiApiKey: e.target.value,
+                  }))
+                }
+                placeholder="sk-..."
+              />
+              <p className="text-xs text-slate-500">
+                Stored locally. Current value: {maskApiKey(securitySettings.openaiApiKey)}
+              </p>
             </div>
           </div>
 
@@ -943,11 +1080,10 @@ export default function Navbar() {
               Close
             </Button>
             <Button
-              variant="outline"
-              className="border-red-400/15 bg-red-500/[0.08] text-red-100 hover:bg-red-500/[0.14] hover:text-white"
-              onClick={handleSignOut}
+              className="border border-cyan-400/15 bg-cyan-500/[0.12] text-cyan-100 hover:bg-cyan-500/[0.18] hover:text-white"
+              onClick={handleSaveSecuritySettings}
             >
-              Sign Out Now
+              Save Security Settings
             </Button>
           </DialogFooter>
         </DialogContent>

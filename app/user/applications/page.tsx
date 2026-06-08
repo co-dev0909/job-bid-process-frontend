@@ -459,43 +459,57 @@ export default function Applications() {
     }
   };
 
-  const exportToCSV = () => {
+  const downloadFile = (content: string, fileName: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToJson = () => {
     try {
-      // Define CSV headers
-      const headers = [
-        'Job Link',
-        'Drive Word Link',
-        'Status'
-      ];
+      const exportData = filteredApplications.map((app) => ({
+        job_link: app.job_url || "",
+        job_title: app.job_title || "",
+        company: app.company || "",
+        job_description: app.description || "",
+      }));
 
-      // Map applications data to CSV rows
-      const rows = filteredApplications.map((app) => [
-        `"${app.job_url || ''}"`,
-        `"${app.driveDocxLink || ''}"`,
-        `"${app.status || ''}"`,
-      ]);
-
-      // Combine headers and rows
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.join(','))
-      ].join('\n');
-
-      // Create blob and download
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `applications_${new Date().toISOString().slice(0, 10)}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      downloadFile(
+        JSON.stringify(exportData, null, 2),
+        `applications_${new Date().toISOString().slice(0, 10)}.json`,
+        "application/json;charset=utf-8;"
+      );
     } catch (error) {
-      console.error('CSV export failed:', error);
-      alert('Failed to export CSV');
+      console.error("JSON export failed:", error);
+      alert("Failed to export JSON");
     }
-  }
+  };
+
+  const exportJobLinks = () => {
+    try {
+      const links = filteredApplications
+        .map((app) => app.job_url?.trim())
+        .filter(Boolean)
+        .join("\n");
+
+      downloadFile(
+        links,
+        `job_links_${new Date().toISOString().slice(0, 10)}.txt`,
+        "text/plain;charset=utf-8;"
+      );
+    } catch (error) {
+      console.error("Job links export failed:", error);
+      alert("Failed to export job links");
+    }
+  };
 
   const handleOnApply = async (appId: string, jobUrl: string) => {
     try {
@@ -624,9 +638,17 @@ export default function Applications() {
                         variant="ghost"
                         size="sm"
                         className="text-slate-400 hover:bg-white/[0.04] hover:text-cyan-300"
-                        onClick={exportToCSV}
+                        onClick={exportToJson}
                       >
-                        Export CSV
+                        Export Json
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-slate-400 hover:bg-white/[0.04] hover:text-cyan-300"
+                        onClick={exportJobLinks}
+                      >
+                        Export Job Links
                       </Button>
                       <Button
                         variant="ghost"
