@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Table,
   TableBody,
@@ -40,6 +40,16 @@ const CustomTable: React.FC<CustomTableProps> = ({
 
   const startIndex = (currentPage - 1) * rowsPerPage;
   const currentData = data.slice(startIndex, startIndex + rowsPerPage);
+
+  useEffect(() => {
+    setCurrentPage((previousPage) => {
+      if (totalPages === 0) {
+        return 1;
+      }
+
+      return Math.min(previousPage, totalPages);
+    });
+  }, [totalPages]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage < 1 || newPage > totalPages) return;

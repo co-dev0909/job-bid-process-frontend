@@ -26,6 +26,45 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "react-toastify";
 
+function getApplicationFilterDateKey(rawDate?: string | null) {
+  if (!rawDate) {
+    return "";
+  }
+
+  const date = new Date(rawDate);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatApplicationDate(rawDate?: string | null) {
+  if (!rawDate) {
+    return "N/A";
+  }
+
+  const date = new Date(rawDate);
+  if (Number.isNaN(date.getTime())) {
+    return "N/A";
+  }
+
+  return date
+    .toLocaleString("en-CA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+    .replace(",", "");
+}
+
 export default function Applications() {
   const panelClassName =
     "border border-white/8 bg-[#121821]/88 shadow-[0_24px_80px_rgba(0,0,0,0.24)] backdrop-blur-md";
@@ -63,7 +102,7 @@ export default function Applications() {
       : true;
     const matchStatus = filterStatus ? app.status === filterStatus : true;
     const matchDate = filterDate
-      ? new Date(app.date_applied)?.toISOString().slice(0, 10) === filterDate
+      ? getApplicationFilterDateKey(app.date_applied) === filterDate
       : true;
 
     return matchCompany && matchStatus && matchDate;
@@ -257,17 +296,7 @@ export default function Applications() {
       header: "Date",
       accessorKey: "date_applied",
       cell: (row: any) => {
-        const raw = row.date_applied;
-        const date = new Date(raw);
-
-        const formatted = date.toLocaleString("en-CA", {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        }).replace(",", "");
+        const formatted = formatApplicationDate(row.date_applied);
 
         return (
           <div className="max-w-48 truncate" title={formatted}>
