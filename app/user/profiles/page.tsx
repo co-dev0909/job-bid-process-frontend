@@ -436,7 +436,7 @@ export default function Profiles() {
                                   <SelectItem key="4" value="4">template4</SelectItem>
                                   <SelectItem key="5" value="5">template5</SelectItem>
                                   <SelectItem key="6" value="6">template6</SelectItem>
-                                  <SelectItem key="7" value="EthanChu">ethanchu</SelectItem>
+                                  <SelectItem key="7" value="7">ethanchu</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
